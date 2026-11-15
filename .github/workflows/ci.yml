@@ -28,8 +28,9 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: 前端构建
+      - name: 前端测试与构建
         run: |
           cd web
           npm ci
+          npm test
           npm run build
