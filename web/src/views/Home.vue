@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import TopBar from '../components/TopBar.vue'
 import { api } from '../api'
@@ -27,6 +27,15 @@ onMounted(async () => {
 
 const hhmm = (time) => (time || '').slice(0, 5)
 
+const isOpen = computed(() => {
+  if (!shop.value?.openTime) return false
+  const now = new Date()
+  const current = now.getHours() * 60 + now.getMinutes()
+  const [openH, openM] = shop.value.openTime.split(':').map(Number)
+  const [closeH, closeM] = shop.value.closeTime.split(':').map(Number)
+  return current >= openH * 60 + openM && current < closeH * 60 + closeM
+})
+
 function choose(service) {
   router.push({ path: '/staff', query: { serviceId: service.id } })
 }
@@ -44,6 +53,7 @@ function choose(service) {
       <p class="hero__eyebrow">Booking</p>
       <h1 class="hero__name">{{ shop ? shop.name : '正在加载' }}</h1>
       <div v-if="shop" class="hero__meta">
+        <span class="tag-open" :class="{ 'is-closed': !isOpen }">{{ isOpen ? '营业中' : '已打烊' }}</span>
         <span>营业 {{ hhmm(shop.openTime) }} – {{ hhmm(shop.closeTime) }}</span>
         <span>{{ services.length }} 项服务</span>
       </div>
@@ -92,6 +102,16 @@ function choose(service) {
               </svg>
             </button>
           </router-link>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section__head">
+          <span class="section__title">预约流程</span>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="step__index">01</span><span>选择服务与技师</span></div>
+          <div class="step"><span class="step__index">02</span><span>挑一个空闲时段并留下手机号</span></div>
+          <div class="step"><span class="step__index">03</span><span>到店报姓名，服务结束后付款</span></div>
         </div>
       </div>
     </div>

@@ -85,5 +85,9 @@ export const api = {
   updateStaff: (id, payload) => put(`/admin/staff/${id}`, payload),
 
   schedules: (staffId) => get(`/admin/staff/${staffId}/schedules`),
-  saveSchedules: (staffId, entries) => put(`/admin/staff/${staffId}/schedules`, entries)
+  saveSchedules: (staffId, entries) => put(`/admin/staff/${staffId}/schedules`, entries),
+
+  exceptions: (staffId) => get(`/admin/staff/${staffId}/exceptions`),
+  saveException: (staffId, payload) => post(`/admin/staff/${staffId}/exceptions`, payload),
+  deleteException: (id) => del(`/admin/exceptions/${id}`)
 }

@@ -76,22 +76,18 @@ watch(activeDate, load)
     </div>
 
     <div class="page">
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px">
-        <div class="card" style="padding: 12px 14px">
-          <div style="font-size: 12px; color: var(--ink-3)">当日单量</div>
-          <div style="font-size: 21px; font-weight: 500; margin-top: 2px">{{ stats.total }}</div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px">
+        <div class="stat">
+          <div class="stat__label">当日单量</div>
+          <div class="stat__value">{{ stats.total }}</div>
         </div>
-        <div class="card" style="padding: 12px 14px">
-          <div style="font-size: 12px; color: var(--ink-3)">待确认</div>
-          <div style="font-size: 21px; font-weight: 500; margin-top: 2px; color: var(--amber)">
-            {{ stats.pending }}
-          </div>
+        <div class="stat">
+          <div class="stat__label">待确认</div>
+          <div class="stat__value" style="color: var(--amber)">{{ stats.pending }}</div>
         </div>
-        <div class="card" style="padding: 12px 14px">
-          <div style="font-size: 12px; color: var(--ink-3)">已确认</div>
-          <div style="font-size: 21px; font-weight: 500; margin-top: 2px; color: var(--sage)">
-            {{ stats.confirmed }}
-          </div>
+        <div class="stat">
+          <div class="stat__label">已确认</div>
+          <div class="stat__value" style="color: var(--sage)">{{ stats.confirmed }}</div>
         </div>
       </div>
 
@@ -110,7 +106,9 @@ watch(activeDate, load)
       <div v-else-if="!list.length" class="empty">这一天还没有预约</div>
 
       <div v-else class="section" style="margin-top: 18px">
-        <div v-for="item in list" :key="item.id" class="card" style="padding: 14px 16px">
+        <div v-for="item in list" :key="item.id" class="card"
+          :class="{ 'is-dim': item.status === 'CANCELLED' || item.status === 'COMPLETED' }"
+          style="padding: 14px 16px">
           <div style="display: flex; align-items: center; gap: 12px">
             <span style="font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums">
               {{ hhmm(item.startAt) }}

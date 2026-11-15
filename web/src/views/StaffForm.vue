@@ -26,6 +26,13 @@ const rows = ref(
   }))
 )
 
+const exceptions = ref([])
+const leaveDate = ref('')
+const leaveRest = ref(true)
+const leaveStart = ref('10:00')
+const leaveEnd = ref('18:00')
+const leaveError = ref('')
+
 const loading = ref(!isNew.value)
 const saving = ref(false)
 const error = ref('')
@@ -49,12 +56,56 @@ onMounted(async () => {
         ? { ...row, rest: false, start: matched.startTime.slice(0, 5), end: matched.endTime.slice(0, 5) }
         : { ...row, rest: true }
     })
+    exceptions.value = await api.exceptions(staffId)
   } catch (e) {
     error.value = e.message
   } finally {
     loading.value = false
   }
 })
+
+function formatLeaveDate(value) {
+  const [, month, day] = value.split('-').map(Number)
+  return `${month}月${day}日`
+}
+
+function describeLeave(item) {
+  if (!item.startTime) return '全天休息'
+  return `${item.startTime.slice(0, 5)} – ${item.endTime.slice(0, 5)}`
+}
+
+async function addLeave() {
+  leaveError.value = ''
+  if (!leaveDate.value) {
+    leaveError.value = '请先选择日期'
+    return
+  }
+  const payload = { workDate: leaveDate.value, rest: leaveRest.value }
+  if (!leaveRest.value) {
+    if (leaveStart.value >= leaveEnd.value) {
+      leaveError.value = '开始时间要早于结束时间'
+      return
+    }
+    payload.startTime = leaveStart.value
+    payload.endTime = leaveEnd.value
+  }
+  try {
+    await api.saveException(staffId, payload)
+    leaveDate.value = ''
+    exceptions.value = await api.exceptions(staffId)
+  } catch (e) {
+    leaveError.value = e.message
+  }
+}
+
+async function removeLeave(item) {
+  try {
+    await api.deleteException(item.id)
+    exceptions.value = await api.exceptions(staffId)
+  } catch (e) {
+    leaveError.value = e.message
+  }
+}
 
 async function save() {
   error.value = ''
@@ -133,6 +184,49 @@ async function save() {
                 <input v-model="row.rest" type="checkbox" /> 休息
               </label>
             </div>
+          </div>
+        </div>
+
+        <div v-if="!isNew" class="section">
+          <div class="section__head">
+            <span class="section__title">临时请假</span>
+            <span class="section__hint">即时生效</span>
+          </div>
+
+          <div v-if="exceptions.length" class="card" style="padding: 0">
+            <div v-for="item in exceptions" :key="item.id" class="leave">
+              <span class="leave__date">{{ formatLeaveDate(item.workDate) }}</span>
+              <span class="leave__desc">{{ describeLeave(item) }}</span>
+              <button class="btn btn--quiet btn--sm" style="color: var(--danger); padding-right: 0"
+                @click="removeLeave(item)">删除</button>
+            </div>
+          </div>
+          <p v-else class="section__hint" style="margin: 0 0 6px">暂无特殊安排，按上方周排班执行</p>
+
+          <label class="field">
+            <span class="field__label">日期</span>
+            <input v-model="leaveDate" class="input" type="date" />
+          </label>
+
+          <div class="field">
+            <label class="check"><input v-model="leaveRest" type="checkbox" /> 整天休息</label>
+          </div>
+
+          <div v-if="!leaveRest" class="field-row">
+            <label class="field">
+              <span class="field__label">开始</span>
+              <input v-model="leaveStart" class="input" type="time" />
+            </label>
+            <label class="field">
+              <span class="field__label">结束</span>
+              <input v-model="leaveEnd" class="input" type="time" />
+            </label>
+          </div>
+
+          <div v-if="leaveError" class="notice">{{ leaveError }}</div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 14px">
+            <button class="btn btn--ghost btn--sm" @click="addLeave">添加请假</button>
           </div>
         </div>
 
