@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:youkong}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      maximum-pool-size: 20
+      connection-timeout: 3000
+  sql:
+    init:
+      # 生产库由 sql/init-mysql.sql 初始化，不要每次启动都跑种子数据
+      mode: never
+  h2:
+    console:
+      enabled: false
+
+youkong:
+  security:
+    jwt-secret: ${JWT_SECRET}
+    token-ttl-minutes: ${JWT_TTL_MINUTES:720}
+    default-username: ${ADMIN_USER:owner}
+    default-password: ${ADMIN_PASSWORD}
+    default-shop-id: ${ADMIN_SHOP_ID:1}
+
+logging:
+  level:
+    com.youkong: info
+    com.youkong.mapper: info
