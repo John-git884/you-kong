@@ -1,0 +1,9 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.idea/
+*.iml
+.DS_Store
+*.log
+
+web/node_modules/
+src/main/resources/static/

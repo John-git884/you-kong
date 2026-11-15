@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: youkong
+  datasource:
+    url: jdbc:h2:mem:youkong;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+      data-locations: classpath:sql/data.sql
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jackson:
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+youkong:
+  security:
+    # 上线务必通过 JWT_SECRET 覆盖，HS256 至少 32 字节
+    jwt-secret: ${JWT_SECRET:youkong-dev-only-secret-change-me-before-prod}
+    token-ttl-minutes: ${JWT_TTL_MINUTES:720}
+    default-username: ${ADMIN_USER:owner}
+    default-password: ${ADMIN_PASSWORD:youkong123}
+    default-shop-id: 1
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%X{traceId:-}] %logger{30} - %msg%n"
+  level:
+    com.youkong: debug
+    # 打开后可在日志里看到每条 SQL 与参数，生产环境调成 info
+    com.youkong.mapper: debug
