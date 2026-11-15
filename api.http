@@ -1,0 +1,128 @@
+### 登录，拿到 token 后自动填进下面的 {{token}}
+# @name login
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "owner",
+  "password": "youkong123"
+}
+
+> {% client.global.set("token", response.body.data.token); %}
+
+### 校验当前 token
+GET http://localhost:8080/api/auth/me
+Authorization: Bearer {{token}}
+
+### 店铺信息
+GET http://localhost:8080/api/shops/1
+
+### 员工列表
+GET http://localhost:8080/api/shops/1/staff
+
+### 服务项目
+GET http://localhost:8080/api/shops/1/services
+
+### 查明天 小鹿 做「基础单色(30min)」的可用时间
+GET http://localhost:8080/api/availability?staffId=1&serviceId=1&date=2026-11-17
+
+### 查明天 小鹿 做「法式延长(90min)」的可用时间
+GET http://localhost:8080/api/availability?staffId=1&serviceId=2&date=2026-11-17
+
+### 创建预约
+POST http://localhost:8080/api/bookings
+Content-Type: application/json
+
+{
+  "staffId": 1,
+  "serviceId": 1,
+  "startAt": "2026-11-17T10:00:00",
+  "customerName": "王女士",
+  "customerPhone": "13800138000"
+}
+
+### 确认预约（把 id 换成上一步返回的）
+POST http://localhost:8080/api/bookings/1/confirm
+
+### 改期
+POST http://localhost:8080/api/bookings/1/reschedule
+Content-Type: application/json
+
+{
+  "startAt": "2026-11-17T15:00:00"
+}
+
+### 取消预约（会释放档期）
+POST http://localhost:8080/api/bookings/1/cancel
+
+### 完成核销
+POST http://localhost:8080/api/bookings/1/complete
+
+### 某人某天的预约列表
+GET http://localhost:8080/api/bookings?staffId=1&date=2026-11-17
+
+### 按手机号查我的预约
+GET http://localhost:8080/api/bookings/mine?phone=13800138000
+
+### 店主：某天全部预约
+GET http://localhost:8080/api/admin/shops/1/bookings?date=2026-11-17
+Authorization: Bearer {{token}}
+
+### 店主：服务列表
+GET http://localhost:8080/api/admin/shops/1/services
+Authorization: Bearer {{token}}
+
+### 店主：新增服务
+POST http://localhost:8080/api/admin/shops/1/services
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "睫毛加密",
+  "durationMinutes": 90,
+  "priceCent": 21800
+}
+
+### 店主：编辑服务
+PUT http://localhost:8080/api/admin/services/4
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "睫毛加密",
+  "durationMinutes": 75,
+  "priceCent": 19800
+}
+
+### 店主：删除服务（有预约记录时返回 3003）
+DELETE http://localhost:8080/api/admin/services/4
+Authorization: Bearer {{token}}
+
+### 店主：员工列表
+GET http://localhost:8080/api/admin/shops/1/staff
+Authorization: Bearer {{token}}
+
+### 店主：新增员工
+POST http://localhost:8080/api/admin/shops/1/staff
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "阿棠",
+  "title": "美睫师",
+  "active": true
+}
+
+### 店主：查询排班
+GET http://localhost:8080/api/admin/staff/1/schedules
+Authorization: Bearer {{token}}
+
+### 店主：覆盖周排班（不传的星期视为休息）
+PUT http://localhost:8080/api/admin/staff/1/schedules
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+[
+  { "dayOfWeek": 1, "startTime": "10:00", "endTime": "20:00" },
+  { "dayOfWeek": 3, "startTime": "10:00", "endTime": "20:00" }
+]
