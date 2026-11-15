@@ -199,6 +199,8 @@ spring:
 
 ## 部署
 
+从空服务器到公网可访问的完整步骤（含 swap、内存参数、常见报错处理）写在 **[docs/deploy.md](docs/deploy.md)**。
+
 ### 单 jar
 
 ```bash
@@ -275,11 +277,24 @@ Dockerfile 是三阶段构建：Node 构建前端 → Maven 打包后端（把�
 | `BookingRescheduleTest` | 改期迁移槽位、改到占用时段时原档期不受影响、被引用服务不可删 |
 | `SecurityTest` | 未登录返回 401、登录拿 token、错误密码 4002、伪造 token 被拒、顾客端免登录 |
 
-共 17 个用例。并发测试实测输出：
+后端共 17 个用例。并发测试实测输出：
 
 ```
 success=1  slotTaken=19  unexpected=0  occupiedSlots=2
 ```
+
+前端用 Vitest：
+
+```bash
+cd web && npm test
+```
+
+| 文件 | 覆盖内容 |
+| --- | --- |
+| `utils.test.js` | 金额格式化、日期轴（今天/明天/指定日期起算）、时间与中文日期转换 |
+| `api.test.js` | 成功返回、业务错误抛文案、401 清 token、Authorization 头、查询参数拼装 |
+
+前后端合计 34 个用例，CI 里都会跑。
 
 ## 压测
 
