@@ -19,12 +19,12 @@
   </tr>
   <tr>
     <td><img src="docs/screenshot-login.png" width="200" alt="登录"></td>
-    <td><img src="docs/screenshot-schedule.png" width="200" alt="排班"></td>
+    <td><img src="docs/screenshot-staff.png" width="200" alt="排班与请假"></td>
     <td></td>
   </tr>
   <tr>
     <td align="center">后台登录</td>
-    <td align="center">员工排班</td>
+    <td align="center">排班与请假</td>
     <td></td>
   </tr>
 </table>
@@ -42,6 +42,7 @@
 - 预约操作：确认、到店核销、取消（取消后档期立即释放）
 - 服务项目：新增、编辑、删除，删除前校验是否已有预约记录
 - 员工管理：新增、修改资料、上下架，按周配置排班
+- 临时请假：给某位员工单独设“某天休息”或“某天只上半天”，立即生效
 
 ## 技术栈
 
@@ -98,6 +99,22 @@
 - 新时段可能与旧时段重叠（例如 10:00 改到 10:15），反过来先插会撞上自己的唯一索引
 - 删和插在同一事务内，新档期被别人占了就整体回滚，原档期不会丢
 - 主单更新带 `version` 乐观锁，两个人同时改期只有一个成功
+
+### 排班的三层优先级
+
+员工当天到底几点到几点能约，由三个来源叠加而成：
+
+```
+临时请假（某天休息 / 某天特殊时段）
+   ↓ 没有例外记录时
+周排班模板（周一至周日）
+   ↓ 取交集
+店铺营业时间
+```
+
+这套逻辑收在一个 `ScheduleResolver` 里，**查询空闲时段**和**下单校验**走的是同一个方法。如果两处各写一套判断，迟早会出现“页面能选、下单却报错”的不一致——这是这类系统最常见的坑。
+
+临时请假表对 `(staff_id, work_date)` 建唯一索引，同一天只允许一条安排，改的时候先删后插。
 
 ### 超时回收
 
@@ -260,6 +277,8 @@ Dockerfile 是三阶段构建：Node 构建前端 → Maven 打包后端（把�
 | GET/POST | `/api/admin/shops/{id}/staff` | 员工列表 / 新增 |
 | PUT | `/api/admin/staff/{id}` | 编辑员工 |
 | GET/PUT | `/api/admin/staff/{id}/schedules` | 查询 / 覆盖周排班 |
+| GET/POST | `/api/admin/staff/{id}/exceptions` | 查询 / 设置临时请假 |
+| DELETE | `/api/admin/exceptions/{id}` | 删除请假安排 |
 
 `api.http` 里可以直接点击运行。
 
@@ -276,8 +295,9 @@ Dockerfile 是三阶段构建：Node 构建前端 → Maven 打包后端（把�
 | `BookingConcurrencyTest` | 20 线程抢同一档期，断言成功数为 1、占用槽位数等于服务时长格数 |
 | `BookingRescheduleTest` | 改期迁移槽位、改到占用时段时原档期不受影响、被引用服务不可删 |
 | `SecurityTest` | 未登录返回 401、登录拿 token、错误密码 4002、伪造 token 被拒、顾客端免登录 |
+| `ScheduleExceptionTest` | 请假当天无可选时段、请假日无法下单、特殊时段覆盖周排班、删除后恢复 |
 
-后端共 17 个用例。并发测试实测输出：
+后端共 21 个用例。并发测试实测输出：
 
 ```
 success=1  slotTaken=19  unexpected=0  occupiedSlots=2
@@ -294,7 +314,7 @@ cd web && npm test
 | `utils.test.js` | 金额格式化、日期轴（今天/明天/指定日期起算）、时间与中文日期转换 |
 | `api.test.js` | 成功返回、业务错误抛文案、401 清 token、Authorization 头、查询参数拼装 |
 
-前后端合计 34 个用例，CI 里都会跑。
+前后端合计 38 个用例，CI 里都会跑。
 
 ## 压测
 
@@ -343,7 +363,6 @@ p99 偏高，先怀疑连接池（默认 10 条）。把池子调到 50 重跑 1
 | 限制 | 原因 | 下一步 |
 | --- | --- | --- |
 | 无在线支付 | 个人主体无法开通微信支付商户号 | 换成企业主体后加定金，回调做幂等 |
-| 无临时请假 | 只做了周排班模板 | 加 `staff_schedule_exception` 叠加，查询时合并 |
 | 可用时段在内存计算 | 单店单日只有几百行 | 数据量上来后下推到 SQL 或用位图 |
 | 只有单一店主账号 | 先把链路打通 | 加账号管理，按角色区分店主 / 店长 / 员工的权限 |
 | 单店单实例 | 项目规模不需要微服务 | 按店铺分库或读写分离，而不是拆服务 |
