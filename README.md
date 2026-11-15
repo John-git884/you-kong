@@ -1,5 +1,7 @@
 # 有空
 
+[![ci](https://github.com/John-git884/you-kong/actions/workflows/ci.yml/badge.svg)](https://github.com/John-git884/you-kong/actions/workflows/ci.yml)
+
 面向线下门店的在线预约与排班系统。顾客在手机上选服务、选技师、选时段完成预约，可以自助改期和取消；店主登录后台确认、核销，并维护服务项目与员工排班。
 
 技术上只讲一件事：**时间被切成固定粒度的格子，"不超卖"由数据库唯一索引保证，不依赖任何分布式锁。**
