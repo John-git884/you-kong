@@ -3,11 +3,13 @@ package com.youkong.controller;
 import com.youkong.common.ApiResponse;
 import com.youkong.dto.BookingDetailVO;
 import com.youkong.dto.ScheduleEntry;
+import com.youkong.dto.ScheduleExceptionRequest;
 import com.youkong.dto.ServiceItemRequest;
 import com.youkong.dto.StaffRequest;
 import com.youkong.entity.ServiceItem;
 import com.youkong.entity.Staff;
 import com.youkong.entity.StaffSchedule;
+import com.youkong.entity.StaffScheduleException;
 import com.youkong.service.AdminService;
 import com.youkong.service.BookingQueryService;
 import jakarta.validation.Valid;
@@ -101,5 +103,25 @@ public class AdminController {
     public ApiResponse<List<StaffSchedule>> saveSchedules(@PathVariable Long id,
                                                           @RequestBody List<ScheduleEntry> entries) {
         return ApiResponse.ok(adminService.saveSchedules(id, entries));
+    }
+
+    // ---------- 临时请假 ----------
+
+    @GetMapping("/staff/{id}/exceptions")
+    public ApiResponse<List<StaffScheduleException>> exceptions(@PathVariable Long id) {
+        return ApiResponse.ok(adminService.listExceptions(id, LocalDate.now()));
+    }
+
+    @PostMapping("/staff/{id}/exceptions")
+    public ApiResponse<StaffScheduleException> saveException(
+            @PathVariable Long id,
+            @Valid @RequestBody ScheduleExceptionRequest req) {
+        return ApiResponse.ok(adminService.saveException(id, req));
+    }
+
+    @DeleteMapping("/exceptions/{id}")
+    public ApiResponse<Void> deleteException(@PathVariable Long id) {
+        adminService.deleteException(id);
+        return ApiResponse.ok(null);
     }
 }

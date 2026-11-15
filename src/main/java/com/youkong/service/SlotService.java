@@ -8,12 +8,10 @@ import com.youkong.entity.BookingSlot;
 import com.youkong.entity.ServiceItem;
 import com.youkong.entity.Shop;
 import com.youkong.entity.Staff;
-import com.youkong.entity.StaffSchedule;
 import com.youkong.mapper.BookingSlotMapper;
 import com.youkong.mapper.ServiceItemMapper;
 import com.youkong.mapper.ShopMapper;
 import com.youkong.mapper.StaffMapper;
-import com.youkong.mapper.StaffScheduleMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,8 +42,8 @@ public class SlotService {
     private final ShopMapper shopMapper;
     private final StaffMapper staffMapper;
     private final ServiceItemMapper serviceItemMapper;
-    private final StaffScheduleMapper staffScheduleMapper;
     private final BookingSlotMapper bookingSlotMapper;
+    private final ScheduleResolver scheduleResolver;
 
     public AvailabilityVO availability(Long staffId, Long serviceId, LocalDate date) {
         return availability(staffId, serviceId, date, LocalDateTime.now());
@@ -73,16 +72,15 @@ public class SlotService {
         vo.setServiceId(serviceId);
         vo.setDurationMinutes(item.getDurationMinutes());
 
-        LocalTime open = max(shop.getOpenTime(), scheduleStart(staffId, date));
-        LocalTime close = min(shop.getCloseTime(), scheduleEnd(staffId, date));
-        if (open == null || close == null || !open.isBefore(close)) {
+        Optional<ScheduleResolver.WorkWindow> window = scheduleResolver.window(staffId, shop, date);
+        if (window.isEmpty()) {
             vo.setSlots(Collections.emptyList());
             return vo;
         }
 
         int slotMinutes = shop.getSlotMinutes() == null ? 15 : shop.getSlotMinutes();
         List<LocalDateTime> candidates = SlotCalculator.candidateStarts(
-                date, open, close, item.getDurationMinutes(), slotMinutes);
+                date, window.get().start(), window.get().end(), item.getDurationMinutes(), slotMinutes);
         Set<LocalDateTime> occupied = occupiedSlots(staffId, date);
 
         List<String> available = new ArrayList<>();
@@ -111,35 +109,4 @@ public class SlotService {
         return rows.stream().map(BookingSlot::getSlotStart).collect(Collectors.toCollection(HashSet::new));
     }
 
-    private StaffSchedule schedule(Long staffId, LocalDate date) {
-        int dayOfWeek = date.getDayOfWeek().getValue();
-        return staffScheduleMapper.selectOne(
-                Wrappers.<StaffSchedule>lambdaQuery()
-                        .eq(StaffSchedule::getStaffId, staffId)
-                        .eq(StaffSchedule::getDayOfWeek, dayOfWeek));
-    }
-
-    private LocalTime scheduleStart(Long staffId, LocalDate date) {
-        StaffSchedule s = schedule(staffId, date);
-        return s == null ? null : s.getStartTime();
-    }
-
-    private LocalTime scheduleEnd(Long staffId, LocalDate date) {
-        StaffSchedule s = schedule(staffId, date);
-        return s == null ? null : s.getEndTime();
-    }
-
-    private static LocalTime max(LocalTime a, LocalTime b) {
-        if (a == null || b == null) {
-            return null;
-        }
-        return a.isAfter(b) ? a : b;
-    }
-
-    private static LocalTime min(LocalTime a, LocalTime b) {
-        if (a == null || b == null) {
-            return null;
-        }
-        return a.isBefore(b) ? a : b;
-    }
 }

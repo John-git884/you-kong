@@ -11,13 +11,11 @@ import com.youkong.entity.BookingSlot;
 import com.youkong.entity.ServiceItem;
 import com.youkong.entity.Shop;
 import com.youkong.entity.Staff;
-import com.youkong.entity.StaffSchedule;
 import com.youkong.mapper.BookingMapper;
 import com.youkong.mapper.BookingSlotMapper;
 import com.youkong.mapper.ServiceItemMapper;
 import com.youkong.mapper.ShopMapper;
 import com.youkong.mapper.StaffMapper;
-import com.youkong.mapper.StaffScheduleMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -49,7 +47,7 @@ public class BookingService {
     private final StaffMapper staffMapper;
     private final ServiceItemMapper serviceItemMapper;
     private final ShopMapper shopMapper;
-    private final StaffScheduleMapper staffScheduleMapper;
+    private final ScheduleResolver scheduleResolver;
 
     @Transactional(rollbackFor = Exception.class)
     public BookingVO create(CreateBookingRequest req) {
@@ -258,23 +256,16 @@ public class BookingService {
 
     private void checkInSchedule(Long staffId, Shop shop,
                                  LocalDateTime startAt, LocalDateTime endAt) {
-        int dayOfWeek = startAt.getDayOfWeek().getValue();
-        StaffSchedule schedule = staffScheduleMapper.selectOne(Wrappers.<StaffSchedule>lambdaQuery()
-                .eq(StaffSchedule::getStaffId, staffId)
-                .eq(StaffSchedule::getDayOfWeek, dayOfWeek));
-        if (schedule == null) {
-            throw new BizException(ErrorCode.SLOT_OUT_OF_SCHEDULE, "day " + dayOfWeek + " 未排班");
-        }
-        LocalTime open = shop.getOpenTime().isAfter(schedule.getStartTime())
-                ? shop.getOpenTime() : schedule.getStartTime();
-        LocalTime close = shop.getCloseTime().isBefore(schedule.getEndTime())
-                ? shop.getCloseTime() : schedule.getEndTime();
+        LocalDate date = startAt.toLocalDate();
+        ScheduleResolver.WorkWindow window = scheduleResolver.window(staffId, shop, date)
+                .orElseThrow(() -> new BizException(ErrorCode.SLOT_OUT_OF_SCHEDULE,
+                        "当天未排班或已请假"));
 
-        LocalDateTime dayOpen = LocalDateTime.of(startAt.toLocalDate(), open);
-        LocalDateTime dayClose = LocalDateTime.of(endAt.toLocalDate(), close);
+        LocalDateTime dayOpen = LocalDateTime.of(date, window.start());
+        LocalDateTime dayClose = LocalDateTime.of(date, window.end());
         if (startAt.isBefore(dayOpen) || endAt.isAfter(dayClose)) {
             throw new BizException(ErrorCode.SLOT_OUT_OF_SCHEDULE,
-                    "营业/排班时间 " + open + "-" + close);
+                    "可约时间 " + window.start() + "-" + window.end());
         }
     }
 }

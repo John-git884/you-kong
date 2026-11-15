@@ -77,3 +77,13 @@ create table if not exists account (
     created_at datetime not null default current_timestamp,
     unique key uk_account_username (username)
 ) engine = InnoDB default charset = utf8mb4;
+
+-- 临时请假 / 特殊营业时间。无记录按周排班，有记录且时间为空表示当天休息
+create table if not exists staff_schedule_exception (
+    id bigint auto_increment primary key,
+    staff_id bigint not null,
+    work_date date not null,
+    start_time time default null,
+    end_time time default null,
+    unique key uk_staff_work_date (staff_id, work_date)
+) engine = InnoDB default charset = utf8mb4;

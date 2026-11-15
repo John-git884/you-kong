@@ -64,3 +64,12 @@ create table if not exists account (
     created_at timestamp not null default current_timestamp,
     constraint uk_account_username unique (username)
 );
+
+create table if not exists staff_schedule_exception (
+    id bigint auto_increment primary key,
+    staff_id bigint not null,
+    work_date date not null,
+    start_time time,
+    end_time time,
+    constraint uk_staff_work_date unique (staff_id, work_date)
+);

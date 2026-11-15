@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.youkong.common.BizException;
 import com.youkong.common.ErrorCode;
 import com.youkong.dto.ScheduleEntry;
+import com.youkong.dto.ScheduleExceptionRequest;
 import com.youkong.dto.ServiceItemRequest;
 import com.youkong.dto.StaffRequest;
 import com.youkong.entity.Booking;
@@ -11,15 +12,18 @@ import com.youkong.entity.ServiceItem;
 import com.youkong.entity.Shop;
 import com.youkong.entity.Staff;
 import com.youkong.entity.StaffSchedule;
+import com.youkong.entity.StaffScheduleException;
 import com.youkong.mapper.BookingMapper;
 import com.youkong.mapper.ServiceItemMapper;
 import com.youkong.mapper.ShopMapper;
 import com.youkong.mapper.StaffMapper;
+import com.youkong.mapper.StaffScheduleExceptionMapper;
 import com.youkong.mapper.StaffScheduleMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,6 +39,7 @@ public class AdminService {
     private final ServiceItemMapper serviceItemMapper;
     private final StaffMapper staffMapper;
     private final StaffScheduleMapper staffScheduleMapper;
+    private final StaffScheduleExceptionMapper scheduleExceptionMapper;
     private final BookingMapper bookingMapper;
 
     public List<ServiceItem> listServices(Long shopId) {
@@ -152,6 +157,67 @@ public class AdminService {
             staffScheduleMapper.insert(schedule);
         }
         return listSchedules(staffId);
+    }
+
+
+    // ---------- 临时请假 ----------
+
+    /** 查未来的例外安排，含今天 */
+    public List<StaffScheduleException> listExceptions(Long staffId, LocalDate from) {
+        Staff staff = staffMapper.selectById(staffId);
+        if (staff == null) {
+            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "staff " + staffId);
+        }
+        return scheduleExceptionMapper.selectList(Wrappers.<StaffScheduleException>lambdaQuery()
+                .eq(StaffScheduleException::getStaffId, staffId)
+                .ge(StaffScheduleException::getWorkDate, from == null ? LocalDate.now() : from)
+                .orderByAsc(StaffScheduleException::getWorkDate));
+    }
+
+    /**
+     * 同一天只保留一条例外：先删旧的再插新的，避免唯一索引冲突。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public StaffScheduleException saveException(Long staffId, ScheduleExceptionRequest req) {
+        Staff staff = staffMapper.selectById(staffId);
+        if (staff == null) {
+            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "staff " + staffId);
+        }
+        if (req.getWorkDate() == null) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "请选择日期");
+        }
+
+        boolean rest = Boolean.TRUE.equals(req.getRest())
+                || req.getStartTime() == null || req.getEndTime() == null;
+        if (!rest && !req.getStartTime().isBefore(req.getEndTime())) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "开始时间必须早于结束时间");
+        }
+
+        StaffScheduleException existing = scheduleExceptionMapper.selectOne(
+                Wrappers.<StaffScheduleException>lambdaQuery()
+                        .eq(StaffScheduleException::getStaffId, staffId)
+                        .eq(StaffScheduleException::getWorkDate, req.getWorkDate()));
+        if (existing != null) {
+            scheduleExceptionMapper.deleteById(existing.getId());
+        }
+
+        StaffScheduleException exception = new StaffScheduleException();
+        exception.setStaffId(staffId);
+        exception.setWorkDate(req.getWorkDate());
+        if (!rest) {
+            exception.setStartTime(req.getStartTime());
+            exception.setEndTime(req.getEndTime());
+        }
+        scheduleExceptionMapper.insert(exception);
+        return exception;
+    }
+
+    public void deleteException(Long exceptionId) {
+        StaffScheduleException exception = scheduleExceptionMapper.selectById(exceptionId);
+        if (exception == null) {
+            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "exception " + exceptionId);
+        }
+        scheduleExceptionMapper.deleteById(exceptionId);
     }
 
     private void applyFields(ServiceItem item, ServiceItemRequest req) {
