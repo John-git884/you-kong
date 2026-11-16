@@ -50,12 +50,14 @@ export const STATUS_TEXT = {
   PENDING: '待确认',
   CONFIRMED: '已确认',
   COMPLETED: '已完成',
-  CANCELLED: '已取消'
+  CANCELLED: '已取消',
+  NO_SHOW: '已爽约'
 }
 
 export const STATUS_TONE = {
   PENDING: 'warn',
   CONFIRMED: 'ok',
   COMPLETED: 'muted',
-  CANCELLED: 'muted'
+  CANCELLED: 'muted',
+  NO_SHOW: 'bad'
 }

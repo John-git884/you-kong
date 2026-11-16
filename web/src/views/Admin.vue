@@ -22,6 +22,9 @@ const loading = ref(true)
 const error = ref('')
 const busy = ref(0)
 
+// 已经过了开场时间：此时「取消」在业务上已不成立，只能核销或标记爽约
+const started = (item) => new Date(item.startAt).getTime() <= Date.now()
+
 const stats = computed(() => ({
   total: list.value.filter((item) => item.status !== 'CANCELLED').length,
   pending: list.value.filter((item) => item.status === 'PENDING').length,
@@ -125,7 +128,7 @@ watch(activeDate, load)
 
           <div v-if="item.status === 'PENDING' || item.status === 'CONFIRMED'"
             style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px">
-            <button v-if="item.status === 'PENDING'" class="btn btn--ghost btn--sm"
+            <button v-if="item.status === 'PENDING' && !started(item)" class="btn btn--ghost btn--sm"
               :disabled="busy === item.id" @click="act(item, 'confirm')">
               确认
             </button>
@@ -133,8 +136,13 @@ watch(activeDate, load)
               :disabled="busy === item.id" @click="act(item, 'complete')">
               到店核销
             </button>
-            <button class="btn btn--quiet btn--sm" style="color: var(--clay)"
-              :disabled="busy === item.id" @click="act(item, 'cancel')">
+            <button v-if="started(item)" class="btn btn--ghost btn--sm"
+              style="color: var(--danger); border-color: #e8cfc8"
+              :disabled="busy === item.id" @click="act(item, 'noShow')">
+              标记爽约
+            </button>
+            <button v-else class="btn btn--quiet btn--sm" style="color: var(--clay)"
+              :disabled="busy === item.id" @click="act(item, 'adminCancel')">
               取消
             </button>
           </div>

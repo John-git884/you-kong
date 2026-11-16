@@ -74,6 +74,8 @@ export const api = {
   cancel: (id) => post(`/bookings/${id}/cancel`),
   mine: (phone) => get('/bookings/mine', { phone, shopId: 1 }),
   adminBookings: (shopId, date) => get(`/admin/shops/${shopId}/bookings`, { date }),
+  adminCancel: (id) => post(`/admin/bookings/${id}/cancel`),
+  noShow: (id) => post(`/admin/bookings/${id}/no-show`),
 
   adminServices: (shopId) => get(`/admin/shops/${shopId}/services`),
   createService: (shopId, payload) => post(`/admin/shops/${shopId}/services`, payload),

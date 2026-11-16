@@ -602,6 +602,11 @@ body {
   color: #8b8279;
 }
 
+.pill--bad {
+  background: #fbeceb;
+  color: #9c4a37;
+}
+
 /* ---------- 状态区 ---------- */
 
 .center {
