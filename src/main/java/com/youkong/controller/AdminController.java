@@ -2,6 +2,7 @@ package com.youkong.controller;
 
 import com.youkong.common.ApiResponse;
 import com.youkong.dto.BookingDetailVO;
+import com.youkong.dto.BookingVO;
 import com.youkong.dto.ScheduleEntry;
 import com.youkong.dto.ScheduleExceptionRequest;
 import com.youkong.dto.ServiceItemRequest;
@@ -11,6 +12,7 @@ import com.youkong.entity.Staff;
 import com.youkong.entity.StaffSchedule;
 import com.youkong.entity.StaffScheduleException;
 import com.youkong.service.AdminService;
+import com.youkong.service.BookingService;
 import com.youkong.service.BookingQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +31,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 店主后台接口。一期不做鉴权，部署上线前需要补登录与权限校验。
+ * 店主后台接口。全部挂在 /api/admin/** 下，由 SecurityConfig 统一要求 JWT。
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -38,6 +40,7 @@ public class AdminController {
 
     private final BookingQueryService bookingQueryService;
     private final AdminService adminService;
+    private final BookingService bookingService;
 
     // ---------- 预约 ----------
 
@@ -49,6 +52,18 @@ public class AdminController {
     }
 
     // ---------- 服务项目 ----------
+
+    /** 门店代客取消，不受「提前 N 分钟」限制 */
+    @PostMapping("/bookings/{id}/cancel")
+    public ApiResponse<BookingVO> cancelBooking(@PathVariable Long id) {
+        return ApiResponse.ok(bookingService.cancelByShop(id));
+    }
+
+    /** 标记爽约：只能在开场之后打，不释放档期 */
+    @PostMapping("/bookings/{id}/no-show")
+    public ApiResponse<BookingVO> noShow(@PathVariable Long id) {
+        return ApiResponse.ok(bookingService.markNoShow(id));
+    }
 
     @GetMapping("/shops/{shopId}/services")
     public ApiResponse<List<ServiceItem>> services(@PathVariable Long shopId) {

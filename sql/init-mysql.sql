@@ -10,6 +10,8 @@ create table if not exists shop (
     open_time time not null,
     close_time time not null,
     slot_minutes int not null default 15,
+    -- 开场前多少分钟内不允许顾客自助取消，0 表示不限制
+    cancel_before_minutes int not null default 120,
     created_at timestamp not null default current_timestamp
 ) engine = InnoDB default charset = utf8mb4;
 

@@ -1,6 +1,6 @@
 -- 示例数据：用 MERGE 保证可重复执行（单元测试会多次启动上下文，共用同一个内存库）
-merge into shop (id, name, open_time, close_time, slot_minutes) key (id)
-values (1, '拾光美甲 · 示例店', '10:00', '20:00', 15);
+merge into shop (id, name, open_time, close_time, slot_minutes, cancel_before_minutes) key (id)
+values (1, '拾光美甲 · 示例店', '10:00', '20:00', 15, 120);
 
 merge into staff (id, shop_id, name, title, active) key (id) values
 (1, 1, '小鹿', '美甲师', true),

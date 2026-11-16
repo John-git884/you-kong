@@ -4,6 +4,7 @@ create table if not exists shop (
     open_time time not null,
     close_time time not null,
     slot_minutes int not null default 15,
+    cancel_before_minutes int not null default 120,
     created_at timestamp not null default current_timestamp
 );
 

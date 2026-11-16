@@ -125,10 +125,65 @@ public class BookingService {
     }
 
     /**
-     * 取消预约并释放档期。CAS 更新保证并发下只有一次生效。
+     * 顾客自助取消。两条时间约束：
+     *   1. 已经开始的单不能取消 —— 那时候人来没来是「爽约」，不是「取消」，语义不同
+     *   2. 距开场不足店铺配置的分钟数也不能取消 —— 档期放出来也没人来得及约，等于白放
+     *
+     * 这两条是业务规则，不是技术限制：技术上 releaseSlots 一行就能把位子还回去，
+     * 真正的问题是「还回去之后有没有用」。
      */
     @Transactional(rollbackFor = Exception.class)
     public BookingVO cancel(Long bookingId) {
+        Booking booking = requireBooking(bookingId);
+        // 先看状态，再看时间：已经爽约或已完成的单，报「状态不允许」比报「超时」准确
+        if (!BookingStatus.PENDING.equals(booking.getStatus())
+                && !BookingStatus.CONFIRMED.equals(booking.getStatus())) {
+            throw new BizException(ErrorCode.BOOKING_STATUS_ILLEGAL, "cancel " + bookingId);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (!booking.getStartAt().isAfter(now)) {
+            throw new BizException(ErrorCode.CANCEL_TOO_LATE, "预约已开始，只能由门店处理");
+        }
+
+        Shop shop = shopMapper.selectById(booking.getShopId());
+        int minutes = shop == null || shop.getCancelBeforeMinutes() == null
+                ? 0 : shop.getCancelBeforeMinutes();
+        if (minutes > 0 && now.isAfter(booking.getStartAt().minusMinutes(minutes))) {
+            throw new BizException(ErrorCode.CANCEL_TOO_LATE, "距开始不足 " + minutes + " 分钟，请联系门店取消");
+        }
+
+        return doCancel(bookingId);
+    }
+
+    /**
+     * 门店代客取消，不受时间限制。顾客那边做不到的情况（开场前十分钟才说要来不了），
+     * 门店要在电话里答应，后台就得能操作。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public BookingVO cancelByShop(Long bookingId) {
+        requireBooking(bookingId);
+        return doCancel(bookingId);
+    }
+
+    /**
+     * 标记爽约。只能在开场之后打，且不释放档期 —— 时间已经过去，
+     * 释放出来也不会出现在可约列表里，留着记录反而是门店复盘要看的。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public BookingVO markNoShow(Long bookingId) {
+        Booking booking = requireBooking(bookingId);
+        if (booking.getStartAt().isAfter(LocalDateTime.now())) {
+            throw new BizException(ErrorCode.NOT_STARTED);
+        }
+        boolean moved = transit(bookingId, BookingStatus.PENDING, BookingStatus.NO_SHOW)
+                || transit(bookingId, BookingStatus.CONFIRMED, BookingStatus.NO_SHOW);
+        if (!moved) {
+            throw new BizException(ErrorCode.BOOKING_STATUS_ILLEGAL, "no-show " + bookingId);
+        }
+        return BookingVO.from(requireBooking(bookingId));
+    }
+
+    private BookingVO doCancel(Long bookingId) {
         boolean moved = transit(bookingId, BookingStatus.PENDING, BookingStatus.CANCELLED)
                 || transit(bookingId, BookingStatus.CONFIRMED, BookingStatus.CANCELLED);
         if (!moved) {

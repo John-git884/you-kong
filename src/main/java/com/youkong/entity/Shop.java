@@ -26,5 +26,8 @@ public class Shop {
     /** 时间槽粒度（分钟），默认 15 */
     private Integer slotMinutes;
 
+    /** 开场前多少分钟内不允许顾客自助取消，0 表示不限制；门店后台不受此限制 */
+    private Integer cancelBeforeMinutes;
+
     private LocalDateTime createdAt;
 }

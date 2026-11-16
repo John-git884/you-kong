@@ -20,6 +20,8 @@ public enum ErrorCode {
     BOOKING_NOT_FOUND(3001, "预约不存在"),
     BOOKING_STATUS_ILLEGAL(3002, "当前预约状态不允许此操作"),
     SERVICE_IN_USE(3003, "该服务已有预约记录，不能删除"),
+    CANCEL_TOO_LATE(3004, "已超过可取消时间，请联系门店"),
+    NOT_STARTED(3005, "预约还没开始，不能标记为爽约"),
 
     UNAUTHORIZED(4001, "登录已失效，请重新登录"),
     LOGIN_FAILED(4002, "账号或密码不正确"),
