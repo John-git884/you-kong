@@ -219,7 +219,9 @@ cd web && npm run build && cd ..
 ### 换成 MySQL
 
 ```bash
-mysql -u root -p < sql/init-mysql.sql
+mysql -u root -p -e "create database if not exists youkong default character set utf8mb4"
+mysql -u root -p youkong < sql/init-mysql.sql     # 建表
+mysql -u root -p youkong < sql/seed-mysql.sql     # 演示数据，正式环境可跳过
 ```
 
 ```yaml
@@ -233,6 +235,20 @@ spring:
     init:
       mode: never      # 生产不要每次启动都跑种子数据
 ```
+
+MySQL 8.0.46 上实际跑过一遍（不是纸面配置）：
+
+| 验证项 | 结果 |
+| --- | --- |
+| 建表与初始化 | 8 张表全部创建，含唯一索引 `uk_slot_staff_time` |
+| 后台登录 | 首次启动自动写入 `owner` 账号，BCrypt 校验通过 |
+| 预约 → 取消 → 释放 | 档期立刻回到可约列表 |
+| 重复占位 | 返回 `2001`，异常类型从 `DuplicateKeyException` 正确转换 |
+| 提前取消限制 | 距开场不足 120 分钟返回 `3004` |
+| 爽约流转 | `CONFIRMED → NO_SHOW`，之后取消/核销均返回 `3002` |
+| 200 并发抢同一档期 | **成功 1、冲突 199、异常 0**，p99 292 ms；事后核对无重复槽位 |
+
+顺带一个和 H2 不同的现象：压测后预约主键从 1 直接跳到 204。InnoDB 的自增 id 在事务回滚时**不回收**，199 次插入冲突各消耗一个 id。这不是 bug，但如果你按 id 连续性做「当日预约序号」之类的展示，就会看到空洞。
 
 ## 部署
 
